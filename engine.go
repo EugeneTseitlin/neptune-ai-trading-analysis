@@ -3,8 +3,10 @@ package main
 import (
 	// "fmt"
 	"math"
-	"github.com/shopspring/decimal"
 	"sync"
+
+	"github.com/shopspring/decimal"
+	"github.com/emirpasic/gods/maps/treemap"
 )
 
 type TradeAnalysisEngine struct {
@@ -37,12 +39,27 @@ func NewSymbolData() *SymbolData {
 
 	statWindowsPerSize := make(map[int]*StatWindow)
 	for i := 1; i <= 8; i++ {
-		statWindowsPerSize[int(math.Pow10(i))] = &StatWindow{}
+		statWindowsPerSize[int(math.Pow10(i))] = NewStatWindow()
 	}
 
 	return &SymbolData{
 		pricePoints: []decimal.Decimal{},
 		statWindowsPerSize: statWindowsPerSize,
+	}
+}
+
+func DecLessFunc(a, b decimal.Decimal) bool {
+	return a.LessThan(b)
+}
+
+func DecComparator(a, b interface{}) int {
+	aDec, bDec := a.(decimal.Decimal), b.(decimal.Decimal)
+	return aDec.Compare(bDec)
+}
+
+func NewStatWindow() *StatWindow {
+	return &StatWindow{
+		pointsTreeMap: *treemap.NewWith(DecComparator),
 	}
 }
 
@@ -66,6 +83,9 @@ func (symbolData *SymbolData) addBatch(newPricePoints []decimal.Decimal) {
 		pricePointsEnteringWindowFirstIndex := len(symbolData.pricePoints) - pricePointsEnteringWindowSize
 		pricePointsEnteringWindow := symbolData.pricePoints[pricePointsEnteringWindowFirstIndex:]
 		
+		statWindow.RemoveSliceFromTreeMap(pricePointsLeavingWindow)
+		statWindow.InsertSliceToTreeMap(pricePointsEnteringWindow)
+
 		prevAverage := statWindow.Average
 		nextWindowEffectiveSizeDec := decimal.NewFromInt(int64(nextWindowEffectiveSize))
 		prevWindowEffectiveSizeDec := decimal.NewFromInt(int64(prevWindowEffectiveSize))
@@ -80,6 +100,10 @@ func (symbolData *SymbolData) addBatch(newPricePoints []decimal.Decimal) {
 
 		nextVariance := nextSumOfSquares.Div(nextWindowEffectiveSizeDec).Sub(nextAverage.Mul(nextAverage))
 
+		nextMin, _ := statWindow.pointsTreeMap.Min()
+		nextMax, _ := statWindow.pointsTreeMap.Max()
+		statWindow.Min = nextMin.(decimal.Decimal)
+		statWindow.Max = nextMax.(decimal.Decimal)
 		statWindow.Last = symbolData.pricePoints[len(symbolData.pricePoints) - 1]
 		statWindow.Average = nextAverage
 		statWindow.SumOfSquares = nextSumOfSquares
@@ -111,6 +135,40 @@ type StatWindow struct {
 	Average decimal.Decimal
 	SumOfSquares decimal.Decimal
 	Variance decimal.Decimal
+
+	pointsTreeMap treemap.Map
+}
+
+func (sw *StatWindow) InsertToTreeMap(point decimal.Decimal) {
+	counter, exists := sw.pointsTreeMap.Get(point)
+	if exists {
+		sw.pointsTreeMap.Put(point, counter.(int) + 1)
+	} else {
+		sw.pointsTreeMap.Put(point, 1)
+	}
+}
+
+func (sw *StatWindow) InsertSliceToTreeMap(points []decimal.Decimal) {
+	for _, point := range points {
+		sw.InsertToTreeMap(point)
+	}
+}
+
+func (sw *StatWindow) RemoveFromTreeMap(point decimal.Decimal) {
+	counter, exists := sw.pointsTreeMap.Get(point)
+	if exists {
+		if counter.(int) > 1 {
+			sw.pointsTreeMap.Put(point, counter.(int) - 1)
+		} else {
+			sw.pointsTreeMap.Remove(point)
+		}
+	} 
+}
+
+func (sw *StatWindow) RemoveSliceFromTreeMap(points []decimal.Decimal) {
+	for _, point := range points {
+		sw.RemoveFromTreeMap(point)
+	}
 }
 
 func (engine *TradeAnalysisEngine) AddBatch(symbol string, newPricePoints []decimal.Decimal) {
