@@ -41,15 +41,10 @@ func (symbolData *SymbolData) addBatch(newPricePoints []decimal.Decimal) {
 		prevWindowEffectiveSize := min(windowTargetSize, previousPricePointsSize)
 		nextWindowEffectiveSize := min(windowTargetSize, len(symbolData.pricePoints))
 
-		prevWindowFirstIndex := len(symbolData.pricePoints) - prevWindowEffectiveSize - len(newPricePoints)
+		pricePointsLeavingWindow := symbolData.getPricePointsLeavingWindow(
+			prevWindowEffectiveSize, windowTargetSize, len(newPricePoints))
 
-		pricePointsLeavingWindowSize := max(0, prevWindowEffectiveSize + len(newPricePoints) - windowTargetSize)
-		pricePointsLeavingWindowLastIndex := prevWindowFirstIndex + pricePointsLeavingWindowSize
-		pricePointsLeavingWindow := symbolData.pricePoints[prevWindowFirstIndex:pricePointsLeavingWindowLastIndex]
-
-		pricePointsEnteringWindowSize := min(windowTargetSize, len(newPricePoints))
-		pricePointsEnteringWindowFirstIndex := len(symbolData.pricePoints) - pricePointsEnteringWindowSize
-		pricePointsEnteringWindow := symbolData.pricePoints[pricePointsEnteringWindowFirstIndex:]
+		pricePointsEnteringWindow := symbolData.getPricePointsEnteringWindow(windowTargetSize, len(newPricePoints))
 
 		statsWindow.RemoveSliceFromTreeMap(pricePointsLeavingWindow)
 		statsWindow.InsertSliceToTreeMap(pricePointsEnteringWindow)
@@ -78,4 +73,19 @@ func (symbolData *SymbolData) addBatch(newPricePoints []decimal.Decimal) {
 		statsWindow.SumOfSquares = nextSumOfSquares
 		statsWindow.Variance = nextVariance
 	}
+}
+
+func (symbolData *SymbolData) getPricePointsLeavingWindow(prevWindowEffectiveSize, windowTargetSize, newPricePointsSize int) []decimal.Decimal {
+	prevWindowFirstIndex := len(symbolData.pricePoints) - prevWindowEffectiveSize - newPricePointsSize
+	pricePointsLeavingWindowSize := max(0, prevWindowEffectiveSize + newPricePointsSize - windowTargetSize)
+	pricePointsLeavingWindowLastIndex := prevWindowFirstIndex + pricePointsLeavingWindowSize
+	pricePointsLeavingWindow := symbolData.pricePoints[prevWindowFirstIndex:pricePointsLeavingWindowLastIndex]
+	return pricePointsLeavingWindow
+}
+
+func (symbolData *SymbolData) getPricePointsEnteringWindow(windowTargetSize, newPricePointsSize int) []decimal.Decimal {
+	pricePointsEnteringWindowSize := min(windowTargetSize, newPricePointsSize)
+	pricePointsEnteringWindowFirstIndex := len(symbolData.pricePoints) - pricePointsEnteringWindowSize
+	pricePointsEnteringWindow := symbolData.pricePoints[pricePointsEnteringWindowFirstIndex:]
+	return pricePointsEnteringWindow
 }
