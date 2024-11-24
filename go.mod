@@ -1,4 +1,4 @@
-module github.com/EugeneTseitlin/neptune-ai-trading-analysis.git
+module github.com/EugeneTseitlin/neptune-ai-trading-analysis
 
 go 1.22.1
 
