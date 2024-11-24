@@ -1,6 +1,7 @@
 package tradinganalysis
 
 import (
+	"errors"
 	"math"
 	"sync"
 
@@ -58,9 +59,12 @@ func (engine *TradeAnalysisEngine) AddBatch(symbol string, newPricePoints []deci
 	engine.locksPerSymbol[symbol].Unlock()
 }
 
-func (engine *TradeAnalysisEngine) GetStats(symbol string, k int) Stats {
-	engine.locksPerSymbol[symbol].Lock()
-	defer engine.locksPerSymbol[symbol].Unlock()
-	sd := engine.symbolDataPerSymbol[symbol]
-	return sd.statWindowsPerSize[int(math.Pow10(k))].Stats
+var ErrSymbolNotFound = errors.New("symbol not found")
+
+func (engine *TradeAnalysisEngine) GetStats(symbol string, k int) (Stats, error) {
+	sd, exists := engine.symbolDataPerSymbol[symbol]
+	if exists {
+		return sd.statWindowsPerSize[int(math.Pow10(k))].Stats, nil
+	}
+	return Stats{}, ErrSymbolNotFound
 }

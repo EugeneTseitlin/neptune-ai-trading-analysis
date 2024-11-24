@@ -41,17 +41,17 @@ func TestEgineAddBatch(t *testing.T) {
 	}
 
 	engine.AddBatch(symbol1, batch1)
-	window1 := engine.GetStats(symbol1, 1)
+	window1, _ := engine.GetStats(symbol1, 1)
 	fmt.Println(window1)
 	AssertStats(t, window1, expectWindow1)
 
 	engine.AddBatch(symbol1, batch2)
-	window2 := engine.GetStats(symbol1, 1)
+	window2, _ := engine.GetStats(symbol1, 1)
 	fmt.Println(window2)
 	AssertStats(t, window2, expectWindow2)
 
 	engine.AddBatch(symbol1, batch3)
-	window3 := engine.GetStats(symbol1, 1)
+	window3, _ := engine.GetStats(symbol1, 1)
 	fmt.Println(window3)
 	AssertStats(t, window3, expectWindow3)
 }

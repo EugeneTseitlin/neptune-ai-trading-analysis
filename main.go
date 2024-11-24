@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -43,8 +44,16 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats := tradeAnalysisEngine.GetStats(symbol, k)
-	json.NewEncoder(w).Encode(stats)
+	stats, err := tradeAnalysisEngine.GetStats(symbol, k)
+	if err != nil {
+		if errors.Is(err, tradinganalysis.ErrSymbolNotFound) {
+			http.NotFound(w, r)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	} else {
+		json.NewEncoder(w).Encode(stats)
+	}
 }
 
 func main() {
