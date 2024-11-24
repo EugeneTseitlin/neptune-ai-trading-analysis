@@ -3,6 +3,7 @@ package main
 import (
 	// "fmt"
 	"math"
+	"github.com/shopspring/decimal"
 	"sync"
 )
 
@@ -20,7 +21,7 @@ func NewTradeAnalysisEngine() *TradeAnalysisEngine {
 }
 
 type SymbolData struct {
-	pricePoints []float64
+	pricePoints []decimal.Decimal
 	statWindowsPerSize map[int]*StatWindow
 }
 
@@ -40,12 +41,12 @@ func NewSymbolData() *SymbolData {
 	}
 
 	return &SymbolData{
-		pricePoints: []float64{},
+		pricePoints: []decimal.Decimal{},
 		statWindowsPerSize: statWindowsPerSize,
 	}
 }
 
-func (symbolData *SymbolData) addBatch(newPricePoints []float64) {
+func (symbolData *SymbolData) addBatch(newPricePoints []decimal.Decimal) {
 	
 	previousPricePointsSize := len(symbolData.pricePoints)
 	symbolData.pricePoints = append(symbolData.pricePoints, newPricePoints...)
@@ -65,16 +66,19 @@ func (symbolData *SymbolData) addBatch(newPricePoints []float64) {
 		pricePointsEnteringWindowFirstIndex := len(symbolData.pricePoints) - pricePointsEnteringWindowSize
 		pricePointsEnteringWindow := symbolData.pricePoints[pricePointsEnteringWindowFirstIndex:]
 		
-		prevAvgerage := statWindow.Average
-		nextAverage := prevAvgerage * (float64(prevWindowEffectiveSize) / float64(nextWindowEffectiveSize)) + 
-			(sumSlice(pricePointsEnteringWindow) - sumSlice(pricePointsLeavingWindow)) / float64(nextWindowEffectiveSize)
+		prevAverage := statWindow.Average
+		nextWindowEffectiveSizeDec := decimal.NewFromInt(int64(nextWindowEffectiveSize))
+		prevWindowEffectiveSizeDec := decimal.NewFromInt(int64(prevWindowEffectiveSize))
+		prevAverageAdjustedToNextWindowSize := prevAverage.Mul(prevWindowEffectiveSizeDec.Div(nextWindowEffectiveSizeDec))
+		averageChangeFromSlidingWindow := sumSlice(pricePointsEnteringWindow).Sub(sumSlice(pricePointsLeavingWindow)).Div(nextWindowEffectiveSizeDec)
+		nextAverage := prevAverageAdjustedToNextWindowSize.Add(averageChangeFromSlidingWindow)
 
 		prevSumOfSquares := statWindow.SumOfSquares
 		sumOfSquaresOfPointsLeavingWindow := calcSumOfSquares(pricePointsLeavingWindow)
 		sumOfSquaresOfPointsEnteringWindow := calcSumOfSquares(pricePointsEnteringWindow)
-		nextSumOfSquares := prevSumOfSquares - sumOfSquaresOfPointsLeavingWindow + sumOfSquaresOfPointsEnteringWindow
+		nextSumOfSquares := prevSumOfSquares.Sub(sumOfSquaresOfPointsLeavingWindow).Add(sumOfSquaresOfPointsEnteringWindow) 
 
-		nextVariance := nextSumOfSquares / float64(nextWindowEffectiveSize) - nextAverage * nextAverage
+		nextVariance := nextSumOfSquares.Div(nextWindowEffectiveSizeDec).Sub(nextAverage.Mul(nextAverage))
 
 		statWindow.Last = symbolData.pricePoints[len(symbolData.pricePoints) - 1]
 		statWindow.Average = nextAverage
@@ -83,37 +87,33 @@ func (symbolData *SymbolData) addBatch(newPricePoints []float64) {
 	}
 }
 
-func calcSumOfSquares(points []float64) float64 {
-	var sumOfSquares float64
+func calcSumOfSquares(points []decimal.Decimal) decimal.Decimal {
+	var sumOfSquares decimal.Decimal
 	for _, point := range points {
-		squaredDeviation := point * point 
-		sumOfSquares += squaredDeviation
+		squaredDeviation := point.Mul(point) 
+		sumOfSquares = sumOfSquares.Add(squaredDeviation)
 	}
 	return sumOfSquares
 }
 
-type Numeric interface {
-	~int | ~int32 | ~int64 | ~float32 | ~float64 | ~uint
-}
-
-func sumSlice[T Numeric](numbers []T) T {
-	var sum T
+func sumSlice(numbers []decimal.Decimal) decimal.Decimal {
+	var sum decimal.Decimal
 	for _, number := range numbers {
-		sum += number
+		sum = sum.Add(number)
 	}
 	return sum
 }
 
 type StatWindow struct {
-	Min float64
-	Max float64
-	Last float64
-	Average float64
-	SumOfSquares float64
-	Variance float64
+	Min decimal.Decimal
+	Max decimal.Decimal
+	Last decimal.Decimal
+	Average decimal.Decimal
+	SumOfSquares decimal.Decimal
+	Variance decimal.Decimal
 }
 
-func (engine *TradeAnalysisEngine) AddBatch(symbol string, newPricePoints []float64) {
+func (engine *TradeAnalysisEngine) AddBatch(symbol string, newPricePoints []decimal.Decimal) {
 	engine.rootLock.RLock()
 	_, exists := engine.symbolDataPerSymbol[symbol]
 	engine.rootLock.RUnlock()

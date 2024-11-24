@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"github.com/shopspring/decimal"
 )
 
 var tradeAnalysisEngine = NewTradeAnalysisEngine()
@@ -11,7 +13,7 @@ var tradeAnalysisEngine = NewTradeAnalysisEngine()
 func AddBatchHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Symbol string    `json:"symbol"`
-		Values []float64 `json:"values"`
+		Values []decimal.Decimal `json:"values"`
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&req)

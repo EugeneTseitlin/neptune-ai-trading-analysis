@@ -3,15 +3,17 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"github.com/shopspring/decimal"
 )
 
 func TestEgineAddBatch(t *testing.T) {
 	engine := NewTradeAnalysisEngine()
 	
 	symbol1 := "MILK"
-	batch1 := []float64{10, 12, 11, 11.5, 13}
-	batch2 := []float64{15, 16, 16.5}
-	batch3 := []float64{18, 19, 21, 20.5, 22, 22.5, 21.5}
+	batch1 := ConvertFloatSliceToDec([]float64{10, 12, 11, 11.5, 13})
+	batch2 := ConvertFloatSliceToDec([]float64{15, 16, 16.5})
+	batch3 := ConvertFloatSliceToDec([]float64{18, 19, 21, 20.5, 22, 22.5, 21.5})
 	
 	// expectWindow1 := StatWindow{
 	// 	Last: 13,
@@ -32,12 +34,12 @@ func TestEgineAddBatch(t *testing.T) {
 	// }
 
 	expectWindow3 := StatWindow{
-		Last: 21.5,
-		Min: 10,
-		Max: 22.5,
-		Average: 19.2,
-		SumOfSquares: 3752,
-		Variance: 6.56,
+		Last: decimal.NewFromFloat(21.5),
+		Min: decimal.NewFromFloat(10),
+		Max: decimal.NewFromFloat(22.5),
+		Average: decimal.NewFromFloat(19.2),
+		SumOfSquares: decimal.NewFromFloat(3752),
+		Variance: decimal.NewFromFloat(6.56),
 	}
 
 	engine.AddBatch(symbol1, batch1)
@@ -54,11 +56,18 @@ func TestEgineAddBatch(t *testing.T) {
 	window3 := engine.GetStats(symbol1, 1)
 	fmt.Println(window3)
 	Assert(t, window3, expectWindow3)
-
 }
 
 func Assert[T comparable](t *testing.T, actual, expected T) {
 	if actual != expected {
 		t.Fatalf("Actual result: %v is not equal to expected: %v", actual, expected)
 	}
+}
+
+func ConvertFloatSliceToDec(numbers []float64) []decimal.Decimal {
+	result := []decimal.Decimal{}
+	for _, n := range numbers {
+		result = append(result, decimal.NewFromFloat(n))
+	}
+	return result
 }
