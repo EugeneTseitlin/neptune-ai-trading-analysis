@@ -1,3 +1,5 @@
+Installing dependencies:
+go mod tidy
 Running tests:
 go test ./...
 Running web server:

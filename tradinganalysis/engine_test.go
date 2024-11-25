@@ -1,22 +1,21 @@
-package main
+package tradinganalysis
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/EugeneTseitlin/neptune-ai-trading-analysis/tradinganalysis"
 	"github.com/shopspring/decimal"
 )
 
 func TestEgineAddBatch(t *testing.T) {
-	engine := tradinganalysis.NewTradeAnalysisEngine()
+	engine := NewTradeAnalysisEngine()
 
 	symbol1 := "MILK"
 	batch1 := ConvertFloatSliceToDec([]float64{10, 12, 11, 11.5, 13})
 	batch2 := ConvertFloatSliceToDec([]float64{15, 16, 16.5})
 	batch3 := ConvertFloatSliceToDec([]float64{18, 19, 21, 20.5, 22, 22.5, 21.5})
 
-	expectWindow1 := tradinganalysis.Stats{
+	expectWindow1 := Stats{
 		Last:         decimal.NewFromFloat(13),
 		Min:          decimal.NewFromFloat(10),
 		Max:          decimal.NewFromFloat(13),
@@ -24,7 +23,7 @@ func TestEgineAddBatch(t *testing.T) {
 		Variance:     decimal.NewFromFloat(1),
 	}
 
-	expectWindow2 := tradinganalysis.Stats{
+	expectWindow2 := Stats{
 		Last:         decimal.NewFromFloat(16.5),
 		Min:          decimal.NewFromFloat(10),
 		Max:          decimal.NewFromFloat(16.5),
@@ -32,7 +31,7 @@ func TestEgineAddBatch(t *testing.T) {
 		Variance:     decimal.NewFromFloat(5.171875),
 	}
 
-	expectWindow3 := tradinganalysis.Stats{
+	expectWindow3 := Stats{
 		Last:         decimal.NewFromFloat(21.5),
 		Min:          decimal.NewFromFloat(15),
 		Max:          decimal.NewFromFloat(22.5),
@@ -56,7 +55,7 @@ func TestEgineAddBatch(t *testing.T) {
 	AssertStats(t, window3, expectWindow3)
 }
 
-func AssertStats(t *testing.T, actual, expected tradinganalysis.Stats) {
+func AssertStats(t *testing.T, actual, expected Stats) {
 	if !actual.Equal(expected) {
 		t.Fatalf("Actual result: %v is not equal to expected: %v", actual, expected)
 	}
