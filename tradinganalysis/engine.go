@@ -64,6 +64,8 @@ var ErrSymbolNotFound = errors.New("symbol not found")
 func (engine *TradeAnalysisEngine) GetStats(symbol string, k int) (Stats, error) {
 	sd, exists := engine.symbolDataPerSymbol[symbol]
 	if exists {
+		engine.locksPerSymbol[symbol].RLock()
+		defer engine.locksPerSymbol[symbol].RUnlock()
 		return sd.statWindowsPerSize[int(math.Pow10(k))].Stats, nil
 	}
 	return Stats{}, ErrSymbolNotFound
